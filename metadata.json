@@ -1,0 +1,5 @@
+{
+  "name": "Weather Forecast",
+  "description": "A real-time weather forecast application powered by Gemini Search Grounding.",
+  "requestFramePermissions": ["geolocation"]
+}
