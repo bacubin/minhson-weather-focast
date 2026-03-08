@@ -9,11 +9,7 @@ import {
   CloudRain, CloudLightning, Snowflake, Loader2,
   CloudFog, CloudSun, AlertTriangle, CalendarDays, ArrowRight, Umbrella
 } from 'lucide-react';
-import { GoogleGenAI, Type } from '@google/genai';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
-
-// Initialize Gemini API
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface WeatherData {
   location: string;
@@ -86,112 +82,19 @@ export default function App() {
     setError('');
     
     try {
-      const prompt = `
-        Get the current weather, 8-day forecast, and severe weather alerts for "${searchQuery}".
-        For each day in the 8-day forecast, provide an hourly forecast (e.g., 11:00, 14:00, 17:00, 20:00, 23:00, 02:00, 05:00, 08:00).
-        Also check if there is any active storm/typhoon near this location. If yes, provide its details in the stormForecast object.
-        Include the exact latitude and longitude coordinates for the location.
-        Include RealFeel, RealFeel Shade, Wind Gusts, and Air Quality (e.g., Good, Moderate, Unhealthy) for the current weather.
-        If the user searches in unaccented/lowercase Vietnamese (e.g. "ha noi"), infer the correct city name.
-        Use Google Search for real-time accurate data.
-        Translate all values to English. Ensure the "location" field uses the properly capitalized name (e.g., "Hanoi, Vietnam", "Tokyo, Japan").
-      `;
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-          temperature: 0.1,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              location: { type: Type.STRING, description: "City Name, Country Name" },
-              coordinates: {
-                type: Type.OBJECT,
-                properties: {
-                  lat: { type: Type.NUMBER, description: "Latitude" },
-                  lon: { type: Type.NUMBER, description: "Longitude" }
-                },
-                required: ["lat", "lon"]
-              },
-              current: {
-                type: Type.OBJECT,
-                properties: {
-                  temperature: { type: Type.STRING, description: "e.g., 25°C" },
-                  condition: { type: Type.STRING, description: "Sunny | Cloudy | Partly Cloudy | Rain | Storm | Snow | Clear | Fog" },
-                  humidity: { type: Type.STRING, description: "e.g., 45%" },
-                  wind: { type: Type.STRING, description: "e.g., 12 km/h" },
-                  precipitation: { type: Type.STRING, description: "e.g., 50%" },
-                  realFeel: { type: Type.STRING, description: "e.g., 28°" },
-                  realFeelShade: { type: Type.STRING, description: "e.g., 26°" },
-                  windGusts: { type: Type.STRING, description: "e.g., 15 km/h" },
-                  airQuality: { type: Type.STRING, description: "e.g., Good, Moderate, Unhealthy" }
-                },
-                required: ["temperature", "condition", "humidity", "wind", "precipitation", "realFeel", "realFeelShade", "windGusts", "airQuality"]
-              },
-              forecast: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    day: { type: Type.STRING, description: "Mon, Tue, Wed..." },
-                    high: { type: Type.STRING, description: "e.g., 28°C" },
-                    low: { type: Type.STRING, description: "e.g., 20°C" },
-                    condition: { type: Type.STRING, description: "Sunny | Cloudy | Partly Cloudy | Rain | Storm | Snow | Clear | Fog" },
-                    hourly: {
-                      type: Type.ARRAY,
-                      description: "Hourly forecast for this day (e.g., 11:00, 14:00, 17:00)",
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          time: { type: Type.STRING, description: "e.g., 11:00, 14:00" },
-                          temperature: { type: Type.NUMBER, description: "Numeric temperature value, e.g., 24" },
-                          precipitation: { type: Type.NUMBER, description: "Numeric precipitation chance percentage, e.g., 50" },
-                          wind: { type: Type.NUMBER, description: "Numeric wind speed in km/h, e.g., 12" },
-                          condition: { type: Type.STRING, description: "Sunny | Cloudy | Partly Cloudy | Rain | Storm | Snow | Clear | Fog" }
-                        },
-                        required: ["time", "temperature", "precipitation", "wind", "condition"]
-                      }
-                    }
-                  },
-                  required: ["day", "high", "low", "condition", "hourly"]
-                }
-              },
-              alerts: {
-                type: Type.OBJECT,
-                properties: {
-                  messages: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING }
-                  },
-                  type: { type: Type.STRING, description: "storm, flood, rain, heat, snow, general, or null" }
-                }
-              },
-              stormForecast: {
-                type: Type.OBJECT,
-                properties: {
-                  active: { type: Type.BOOLEAN, description: "True if there is an active storm/typhoon near this location" },
-                  name: { type: Type.STRING, description: "Name of the storm (if active)" },
-                  category: { type: Type.STRING, description: "Category or intensity of the storm" },
-                  distance: { type: Type.STRING, description: "Approximate distance from the location" },
-                  direction: { type: Type.STRING, description: "Movement direction" },
-                  impact: { type: Type.STRING, description: "Expected impact on the location" }
-                },
-                required: ["active"]
-              }
-            },
-            required: ["location", "current", "forecast"]
-          }
-        }
+      const response = await fetch('/api/weather', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: searchQuery }),
       });
       
-      let text = response.text || '';
-      // Clean up markdown if the model included it despite instructions
-      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      if (!response.ok) {
+        throw new Error('Failed to fetch weather data');
+      }
       
-      const data = JSON.parse(text) as WeatherData;
+      const data = await response.json() as WeatherData;
       
       // Save to cache
       weatherCache.current[cacheKey] = data;
@@ -222,17 +125,17 @@ export default function App() {
     const iconColor = isSelected ? "text-white" : "text-[#3b82f6]"; // Using a vibrant blue similar to the image
     const finalClassName = `${className} ${iconColor}`;
     
-    if (cond.includes('rain') || cond.includes('mưa')) 
+    if (cond.includes('rain')) 
       return <CloudRain className={finalClassName} strokeWidth={strokeWidth} />;
-    if (cond.includes('storm') || cond.includes('bão') || cond.includes('sấm')) 
+    if (cond.includes('storm') || cond.includes('thunder')) 
       return <CloudLightning className={finalClassName} strokeWidth={strokeWidth} />;
-    if (cond.includes('snow') || cond.includes('tuyết')) 
+    if (cond.includes('snow')) 
       return <Snowflake className={finalClassName} strokeWidth={strokeWidth} />;
-    if (cond.includes('partly') || cond.includes('nhiều mây')) 
+    if (cond.includes('partly')) 
       return <CloudSun className={finalClassName} strokeWidth={strokeWidth} />;
-    if (cond.includes('cloud') || cond.includes('mây')) 
+    if (cond.includes('cloud')) 
       return <Cloud className={finalClassName} strokeWidth={strokeWidth} />;
-    if (cond.includes('fog') || cond.includes('sương')) 
+    if (cond.includes('fog')) 
       return <CloudFog className={finalClassName} strokeWidth={strokeWidth} />;
     return <Sun className={finalClassName} strokeWidth={strokeWidth} />; // Default to Sun/Clear
   };
@@ -241,11 +144,11 @@ export default function App() {
   const getBackgroundGradient = (condition?: string) => {
     if (!condition) return 'from-cyan-400 via-blue-500 to-indigo-600';
     const cond = condition.toLowerCase();
-    if (cond.includes('rain') || cond.includes('mưa')) return 'from-blue-600 via-indigo-700 to-slate-800';
-    if (cond.includes('storm') || cond.includes('bão')) return 'from-fuchsia-900 via-purple-900 to-slate-900';
-    if (cond.includes('snow') || cond.includes('tuyết')) return 'from-sky-300 via-cyan-400 to-blue-500';
-    if (cond.includes('cloud') || cond.includes('mây')) return 'from-sky-400 via-blue-500 to-indigo-500';
-    if (cond.includes('clear') || cond.includes('sun') || cond.includes('nắng')) return 'from-amber-300 via-orange-400 to-rose-500';
+    if (cond.includes('rain')) return 'from-blue-600 via-indigo-700 to-slate-800';
+    if (cond.includes('storm')) return 'from-fuchsia-900 via-purple-900 to-slate-900';
+    if (cond.includes('snow')) return 'from-sky-300 via-cyan-400 to-blue-500';
+    if (cond.includes('cloud')) return 'from-sky-400 via-blue-500 to-indigo-500';
+    if (cond.includes('clear') || cond.includes('sun')) return 'from-amber-300 via-orange-400 to-rose-500';
     return 'from-cyan-400 via-blue-500 to-indigo-600';
   };
 
@@ -266,7 +169,7 @@ export default function App() {
   const renderDecorativeIcons = (condition?: string) => {
     if (!condition) return null;
     const cond = condition.toLowerCase();
-    if (cond.includes('rain') || cond.includes('mưa')) {
+    if (cond.includes('rain')) {
       return (
         <>
           <CloudRain className="absolute -top-12 -right-12 w-56 h-56 text-blue-500/5 animate-pulse" />
@@ -274,7 +177,7 @@ export default function App() {
         </>
       );
     }
-    if (cond.includes('storm') || cond.includes('bão') || cond.includes('sấm')) {
+    if (cond.includes('storm') || cond.includes('thunder')) {
       return (
         <>
           <CloudLightning className="absolute -top-12 -right-12 w-56 h-56 text-slate-500/5 animate-pulse" />
@@ -282,7 +185,7 @@ export default function App() {
         </>
       );
     }
-    if (cond.includes('snow') || cond.includes('tuyết')) {
+    if (cond.includes('snow')) {
       return (
         <>
           <Snowflake className="absolute -top-12 -right-12 w-56 h-56 text-blue-300/10 animate-[spin_10s_linear_infinite]" />
@@ -290,7 +193,7 @@ export default function App() {
         </>
       );
     }
-    if (cond.includes('cloud') || cond.includes('mây')) {
+    if (cond.includes('cloud')) {
       return (
         <>
           <Cloud className="absolute -top-12 -right-12 w-56 h-56 text-slate-400/5 animate-[bounce_8s_infinite]" />
@@ -349,7 +252,7 @@ export default function App() {
   );
 
   const suggestedCities = [
-    "Hà Nội", "TP Hồ Chí Minh", "Đà Nẵng", "Hải Phòng", "Cần Thơ", "Đà Lạt", "Nha Trang"
+    "Hanoi", "Ho Chi Minh City", "Da Nang", "Hai Phong", "Can Tho", "Da Lat", "Nha Trang"
   ];
 
   if (!hasStarted) {
@@ -366,16 +269,16 @@ export default function App() {
             <CloudSun className="w-32 h-32 text-white drop-shadow-2xl relative z-10 animate-bounce" style={{ animationDuration: '3s' }} />
           </div>
           <h1 className="text-5xl font-extrabold text-white mb-6 drop-shadow-md tracking-tight">
-            Thời Tiết <span className="text-yellow-300">AI</span>
+            Weather <span className="text-yellow-300">AI</span>
           </h1>
           <p className="text-lg text-white/90 mb-10 font-medium leading-relaxed">
-            Khám phá cập nhật thời tiết theo thời gian thực, dự báo 8 ngày và cảnh báo thời tiết xấu được hỗ trợ bởi Google Gemini.
+            Discover real-time weather updates, 8-day forecasts, and severe weather alerts powered by OpenAI GPT-4o.
           </p>
           <button 
             onClick={() => setHasStarted(true)}
             className="group relative inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-blue-600 rounded-full font-bold text-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.4)] active:scale-95"
           >
-            Bắt đầu
+            Get Started
             <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
           </button>
         </div>
@@ -411,7 +314,7 @@ export default function App() {
               }}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              placeholder="Tìm kiếm tỉnh/thành phố ở Việt Nam..."
+              placeholder="Search for a province/city in Vietnam..."
               className="w-full pl-14 pr-6 py-4 rounded-full bg-white/90 backdrop-blur-xl shadow-lg border border-white/60 focus:outline-none focus:ring-4 focus:ring-blue-400/30 text-slate-700 placeholder-slate-400 font-medium transition-all duration-300 group-hover:shadow-xl group-hover:bg-white text-lg"
             />
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6 transition-colors group-focus-within:text-blue-500" />
@@ -749,7 +652,7 @@ export default function App() {
         )}
         
         <p className="text-center text-xs text-white/80 mt-6 font-medium drop-shadow-sm">
-          Data provided by Google Search & Gemini
+          Data provided by OpenAI GPT-4o
         </p>
       </div>
     </div>

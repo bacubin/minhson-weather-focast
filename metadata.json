@@ -1,5 +1,7 @@
 {
   "name": "Weather Forecast",
-  "description": "A real-time weather forecast application powered by Gemini Search Grounding.",
-  "requestFramePermissions": ["geolocation"]
+  "description": "A real-time weather forecast application powered by OpenAI GPT-4o.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }
