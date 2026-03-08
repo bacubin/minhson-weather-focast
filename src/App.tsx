@@ -205,27 +205,6 @@ export default function App() {
     }
   };
 
-  // Get user's current location
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) {
-      setError('Your browser does not support geolocation.');
-      return;
-    }
-
-    setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        fetchWeather(`${latitude}, ${longitude}`);
-      },
-      (err) => {
-        console.error(err);
-        setError('Unable to get your location. Please enter a city name.');
-        setLoading(false);
-      }
-    );
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchWeather(query);
@@ -392,25 +371,13 @@ export default function App() {
           <p className="text-lg text-white/90 mb-10 font-medium leading-relaxed">
             Khám phá cập nhật thời tiết theo thời gian thực, dự báo 8 ngày và cảnh báo thời tiết xấu được hỗ trợ bởi Google Gemini.
           </p>
-          <div className="flex flex-col gap-4 items-center">
-            <button 
-              onClick={() => {
-                setHasStarted(true);
-                handleGetLocation();
-              }}
-              className="group relative inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-blue-600 rounded-full font-bold text-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.4)] active:scale-95 w-full max-w-[300px]"
-            >
-              <MapPin className="w-6 h-6" />
-              Dùng vị trí hiện tại
-            </button>
-            <button 
-              onClick={() => setHasStarted(true)}
-              className="group relative inline-flex items-center justify-center gap-3 px-10 py-4 bg-transparent border-2 border-white/50 text-white rounded-full font-bold text-lg transition-all hover:bg-white/10 active:scale-95 w-full max-w-[300px]"
-            >
-              Tìm kiếm thủ công
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-            </button>
-          </div>
+          <button 
+            onClick={() => setHasStarted(true)}
+            className="group relative inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-blue-600 rounded-full font-bold text-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.4)] active:scale-95"
+          >
+            Bắt đầu
+            <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+          </button>
         </div>
       </div>
     );
@@ -445,17 +412,9 @@ export default function App() {
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               placeholder="Tìm kiếm tỉnh/thành phố ở Việt Nam..."
-              className="w-full pl-14 pr-14 py-4 rounded-full bg-white/90 backdrop-blur-xl shadow-lg border border-white/60 focus:outline-none focus:ring-4 focus:ring-blue-400/30 text-slate-700 placeholder-slate-400 font-medium transition-all duration-300 group-hover:shadow-xl group-hover:bg-white text-lg"
+              className="w-full pl-14 pr-6 py-4 rounded-full bg-white/90 backdrop-blur-xl shadow-lg border border-white/60 focus:outline-none focus:ring-4 focus:ring-blue-400/30 text-slate-700 placeholder-slate-400 font-medium transition-all duration-300 group-hover:shadow-xl group-hover:bg-white text-lg"
             />
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6 transition-colors group-focus-within:text-blue-500" />
-            <button 
-              type="button"
-              onClick={handleGetLocation}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all p-2 rounded-full"
-              title="Use current location"
-            >
-              <MapPin className="w-5 h-5" />
-            </button>
           </form>
 
           {/* Autocomplete Dropdown */}
